@@ -3,57 +3,82 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
-from scipy.io import loadmat
-import pandas as pd
+from torch.utils.data import DataLoader, random_split
 from sklearn.metrics import accuracy_score
 import time
 from DataLoader import SEEDVIIDataset
 from model import MAET
+import math
 
 # 设置超参数
-batch_size = 32
-learning_rate = 1e-3
-epochs = 30
+output_dir = "./output/BaseLine/single_EEG+EYE"
+single_test = True
+eye_multi = True
+dg_choice = False
+pick_ratio = 6/7  # 单被试验证下训练集占总体的比例
+batch_size = 64
+learning_rate = 1e-4
+epochs = 100
 embed_dim = 32
 depth = 3
-num_workers = 1
+num_workers = 0
 num_heads = 4
 drop_rate = 0.1
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 root_dir = '../SEED-VII'  # 根据实际路径修改
 
+
 # 结果文件
-result_file = "./output/EEG/MAET_results.txt"
+result_file = os.path.join(output_dir, "MAET_results.txt")
 accuracies = []
 
 # 确保结果目录存在
 os.makedirs(os.path.dirname(result_file), exist_ok=True)
 
-# 20次循环（每个被试作为测试集一次）
+if dg_choice:
+    num_domains = 19
+else:
+    num_domains = None
+
+# 20次循环
 for i in range(1, 21):
     print(f"\n{'-'*20}")
     print(f"Training and Testing with subject {i} as test set")
     print(f"{'-'*20}")
     
     # 创建数据集
-    train_dataset = SEEDVIIDataset(
-        root_dir=root_dir,
-        feature_type='psd',
-        sample_ratio=1.0,
-        picked=i,
-        is_test=False,
-        eye_multi=False
-    )
-    
-    test_dataset = SEEDVIIDataset(
-        root_dir=root_dir,
-        feature_type='psd',
-        sample_ratio=1.0,
-        picked=i,
-        is_test=True,
-        eye_multi=False
-    )
+    if single_test:
+        full_dataset = SEEDVIIDataset(
+            root_dir=root_dir,
+            feature_type='psd',
+            sample_ratio=1.0,
+            picked=i,
+            eye_multi=eye_multi,
+            single_test=True
+        )
+
+        train_size = int(pick_ratio * len(full_dataset))
+        test_size = len(full_dataset) - train_size
+        train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
+
+    else:
+        train_dataset = SEEDVIIDataset(
+            root_dir=root_dir,
+            feature_type='psd',
+            sample_ratio=1.0,
+            picked=i,
+            is_test=False,
+            eye_multi=eye_multi
+        )
+
+        test_dataset = SEEDVIIDataset(
+            root_dir=root_dir,
+            feature_type='psd',
+            sample_ratio=1.0,
+            picked=i,
+            is_test=True,
+            eye_multi=eye_multi
+        )
     
     # 创建DataLoader
     train_loader = DataLoader(
@@ -69,7 +94,7 @@ for i in range(1, 21):
         shuffle=False,
         num_workers=num_workers
     )
-    
+
     # 初始化模型
     model = MAET(
         eeg_dim=310,
@@ -81,7 +106,8 @@ for i in range(1, 21):
         eye_seq_len=5,
         num_heads=num_heads,
         drop_rate=drop_rate,
-        domain_generalization=False,
+        domain_generalization=dg_choice,
+        num_domains=num_domains
     ).to(device)
     
     # 损失函数和优化器
@@ -98,17 +124,34 @@ for i in range(1, 21):
         total_loss = 0.0
         start_time = time.time()
         
-        for eeg, eye, labels, _ in train_loader:
+        for eeg, eye, labels, dom_labels in train_loader:
             # 转换数据类型并发送到设备
             eeg = eeg.float().to(device)
+            if len(eye) == 0:
+                eye = None
+            else:
+                eye = eye.float().to(device)
+
+            # 如果启用域泛化，需要处理域标签
+            if dg_choice:
+                dom_labels = dom_labels.long().to(device)
             labels = labels.long().to(device)
+            alpha = 2 / (1 + math.exp(-10 * epoch / epochs)) - 1
             
             # 前向传播
             optimizer.zero_grad()
-            outputs = model(eeg=eeg)
-            
-            # 计算损失
-            loss = criterion(outputs, labels)
+            if dg_choice:
+                # 域泛化模式：模型返回两个输出
+                outputs, domain_outputs = model(eeg=eeg, eye=eye, alpha_=alpha)
+
+                # 计算两个损失
+                cls_loss = criterion(outputs, labels)
+                domain_loss = criterion(domain_outputs, dom_labels)
+                loss = cls_loss + domain_loss
+            else:
+                # 非域泛化模式
+                outputs = model(eeg=eeg, eye=eye)
+                loss = criterion(outputs, labels)
             
             # 反向传播
             loss.backward()
@@ -127,10 +170,17 @@ for i in range(1, 21):
         with torch.no_grad():
             for eeg, eye, labels, _ in test_loader:
                 eeg = eeg.float().to(device)
+                if len(eye) == 0:
+                    eye = None
+                else:
+                    eye = eye.float().to(device)
                 labels = labels.long().to(device)
-                eye = None
-                
-                outputs = model(eeg=eeg, eye=eye)
+
+                if dg_choice:
+                    outputs, _ = model(eeg=eeg, eye=eye, alpha_=0)
+                else:
+                    outputs = model(eeg=eeg, eye=eye)
+
                 _, preds = torch.max(outputs, 1)
                 
                 all_preds.extend(preds.cpu().numpy())
@@ -145,7 +195,7 @@ for i in range(1, 21):
         # 保存最佳模型
         if acc > best_acc:
             best_acc = acc
-            torch.save(model.state_dict(), f"./output/EEG/model_subject_{i}_best.pth")
+            torch.save(model.state_dict(), os.path.join(output_dir, f"model_subject_{i}_best.pth"))
     
     # 记录最终准确率
     accuracies.append(best_acc)
@@ -157,6 +207,7 @@ for i in range(1, 21):
 
 # 计算统计结果
 mean_acc = np.mean(accuracies)
+idx, best_acc = np.argmax(accuracies), np.max(accuracies)
 std_acc = np.std(accuracies)
 
 print(f"\n{'-'*20}")
@@ -168,6 +219,7 @@ with open(result_file, "a") as f:
     f.write("\n" + "-"*20 + "\n")
     f.write(f"Mean Accuracy: {mean_acc:.4f}\n")
     f.write(f"Std: {std_acc:.4f}\n")
+    f.write(f"Best_acc: {best_acc:.4f}, at location: {idx+1}\n")
     f.write("-"*20 + "\n")
     f.write("All accuracies:\n")
     for i, acc in enumerate(accuracies, 1):

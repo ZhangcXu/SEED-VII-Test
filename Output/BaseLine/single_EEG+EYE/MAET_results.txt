@@ -1,0 +1,47 @@
+Subject 1 Test Accuracy: 0.6733
+Subject 2 Test Accuracy: 0.5591
+Subject 3 Test Accuracy: 0.3988
+Subject 4 Test Accuracy: 0.7936
+Subject 5 Test Accuracy: 0.5090
+Subject 6 Test Accuracy: 0.4269
+Subject 7 Test Accuracy: 0.6092
+Subject 8 Test Accuracy: 0.5010
+Subject 9 Test Accuracy: 0.5371
+Subject 10 Test Accuracy: 0.5431
+Subject 11 Test Accuracy: 0.7675
+Subject 12 Test Accuracy: 0.3667
+Subject 13 Test Accuracy: 0.5371
+Subject 14 Test Accuracy: 0.3307
+Subject 15 Test Accuracy: 0.4689
+Subject 16 Test Accuracy: 0.4749
+Subject 17 Test Accuracy: 0.5351
+Subject 18 Test Accuracy: 0.5451
+Subject 19 Test Accuracy: 0.4709
+Subject 20 Test Accuracy: 0.4489
+
+--------------------
+Mean Accuracy: 0.5248
+Std: 0.1153
+Best_acc: 0.7936, at location: 4
+--------------------
+All accuracies:
+Subject 1: 0.6733
+Subject 2: 0.5591
+Subject 3: 0.3988
+Subject 4: 0.7936
+Subject 5: 0.5090
+Subject 6: 0.4269
+Subject 7: 0.6092
+Subject 8: 0.5010
+Subject 9: 0.5371
+Subject 10: 0.5431
+Subject 11: 0.7675
+Subject 12: 0.3667
+Subject 13: 0.5371
+Subject 14: 0.3307
+Subject 15: 0.4689
+Subject 16: 0.4749
+Subject 17: 0.5351
+Subject 18: 0.5451
+Subject 19: 0.4709
+Subject 20: 0.4489

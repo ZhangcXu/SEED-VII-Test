@@ -9,8 +9,7 @@ batch_size = 32
 
 class SEEDVIIDataset(Dataset):
     def __init__(self, root_dir, feature_type='psd', eye_multi = False, picked = None,
-                 sample_ratio=1.0, label_mapping=None, domain_generazation = False,
-                 is_test = False):
+                 sample_ratio=1.0, label_mapping=None, single_test = False, is_test = False):
         """
         SEED-VII EEG数据集加载器
         
@@ -20,8 +19,9 @@ class SEEDVIIDataset(Dataset):
             sample_ratio (float): 数据采样比例 (0.0-1.0)
             label_mapping (dict): 情绪名称到数字标签的映射
             eye_multi (bool): 是否使用EYE眼动数据
-            domain_generazation (bool): 是否使用域泛化模式
-            picked (int): 留一交叉验证/域泛化时pick掉的编号
+            picked (int): 留一交叉验证/域泛化时pick掉的编号；如果选了single_test则表示读谁的
+            single_test (bool): 选择验证单被试；否表示留一交叉验证（对域泛化来说数据集和留一交叉验证是一样的处理方式）
+            is_test (bool): 非验证单被试情形下，区分是否是测试集。
         """
         self.root_dir = root_dir
         self.feature_type = feature_type
@@ -31,7 +31,7 @@ class SEEDVIIDataset(Dataset):
         self.labels = []
         self.domain_labels = []
         self.eye_multi = eye_multi
-        self.domain_generazation = domain_generazation
+        self.single_test = single_test
         self.is_test = is_test
         
         # 情绪标签映射 (默认映射)
@@ -42,23 +42,30 @@ class SEEDVIIDataset(Dataset):
         
         # 加载情绪标签映射
         self._load_emotion_labels()
-        
-        if (self.is_test): # 是否是测试集
+
+        if self.single_test:
             subject_data, subject_eye, subject_labels, subject_domain_labels = self._load_subject_data(picked)
             self.data.extend(subject_data)
             self.eye_data.extend(subject_eye)
             self.labels.extend(subject_labels)
             self.domain_labels.extend(subject_domain_labels)
         else:
-            # 加载除选中外所有被试的数据
-            for subject_id in range(1, 21):
-                if (subject_id == picked) :
-                    continue
-                subject_data, subject_eye, subject_labels, subject_domain_labels = self._load_subject_data(subject_id)
+            if self.is_test: # 是否是测试集
+                subject_data, subject_eye, subject_labels, subject_domain_labels = self._load_subject_data(picked)
                 self.data.extend(subject_data)
                 self.eye_data.extend(subject_eye)
                 self.labels.extend(subject_labels)
                 self.domain_labels.extend(subject_domain_labels)
+            else:
+                # 加载除选中外所有被试的数据
+                for subject_id in range(1, 21):
+                    if subject_id == picked:
+                        continue
+                    subject_data, subject_eye, subject_labels, subject_domain_labels = self._load_subject_data(subject_id)
+                    self.data.extend(subject_data)
+                    self.eye_data.extend(subject_eye)
+                    self.labels.extend(subject_labels)
+                    self.domain_labels.extend(subject_domain_labels)
         
         # 数据采样
         if sample_ratio < 1.0:
