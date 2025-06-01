@@ -2,7 +2,7 @@ import scipy.io
 import numpy as np
 
 # 读取 .mat 文件
-mat_data = scipy.io.loadmat('../SEED-VII/EEG_features/1.mat')  # 替换为你的文件名
+mat_data = scipy.io.loadmat('../SEED-VII/EYE_features/1.mat')  # 替换为你的文件名
 
 # 打印所有键（变量名）
 print("所有键:", list(mat_data.keys()))
@@ -21,9 +21,9 @@ for key in user_keys:
     
     # 如果是 NumPy 数组
     if isinstance(data, np.ndarray):
-        # print(f"数组尺寸: {data.shape}")
-        # print(f"数据类型: {data.dtype}")
-        # print(f"最小值: {np.nanmin(data)} | 最大值: {np.nanmax(data)}")
+        print(f"数组尺寸: {data.shape}")
+        print(f"数据类型: {data.dtype}")
+        print(f"最小值: {np.nanmin(data)} | 最大值: {np.nanmax(data)}")
         cnt += data.shape[0]
     
     # 如果是其他类型（如字符串、单元格等）
