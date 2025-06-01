@@ -17,9 +17,10 @@ learning_rate = 1e-3
 epochs = 30
 embed_dim = 32
 depth = 3
+num_workers = 1
 num_heads = 4
 drop_rate = 0.1
-device = torch.device("mps" if torch.mps.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 root_dir = '../SEED-VII'  # 根据实际路径修改
 
 # 结果文件
@@ -59,14 +60,14 @@ for i in range(1, 21):
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=4
+        num_workers=num_workers
     )
     
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=4
+        num_workers=num_workers
     )
     
     # 初始化模型
@@ -86,7 +87,7 @@ for i in range(1, 21):
     # 损失函数和优化器
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
     
     # 训练模型
     best_acc = 0.0
