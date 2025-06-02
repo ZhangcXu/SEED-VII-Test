@@ -36,7 +36,7 @@ accuracies = []
 os.makedirs(os.path.dirname(result_file), exist_ok=True)
 
 if dg_choice:
-    num_domains = 19
+    num_domains = 20
 else:
     num_domains = None
 
