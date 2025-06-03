@@ -11,9 +11,9 @@ from model import MAET
 import math
 
 # 设置超参数
-output_dir = "./output/BaseLine/dg_EEG+EYE"
+output_dir = "./output/BaseLine/dg_EEG"
 single_test = False
-eye_multi = True
+eye_multi = False
 dg_choice = True
 pick_ratio = 6/7  # 单被试验证下训练集占总体的比例
 batch_size = 64
