@@ -12,6 +12,7 @@ from torch.autograd import Function
 from functools import partial
 
 from timm.layers import DropPath, trunc_normal_
+from model_changed import MultiViewEmbedding
 
 
 class Mlp(nn.Module):
@@ -402,26 +403,26 @@ class MAET(nn.Module):
         return x, domain_output
 
 
-class MultiViewEmbedding(nn.Module):
-    def __init__(self, input_dim, output_dim, heads):
-        super().__init__()
-        self.output_dim = output_dim
-        self.heads = heads
+# class MultiViewEmbedding(nn.Module):
+#     def __init__(self, input_dim, output_dim, heads):
+#         super().__init__()
+#         self.output_dim = output_dim
+#         self.heads = heads
 
-        self.transform1 = nn.Linear(input_dim, output_dim)
-        self.transform2 = nn.Linear(input_dim, output_dim * heads)
-        self.sigmoid = nn.Sigmoid()
-        self.bn = nn.BatchNorm1d(output_dim)
+#         self.transform1 = nn.Linear(input_dim, output_dim)
+#         self.transform2 = nn.Linear(input_dim, output_dim * heads)
+#         self.sigmoid = nn.Sigmoid()
+#         self.bn = nn.BatchNorm1d(output_dim)
     
-    def forward(self, x):
-        B, _ = x.size()
-        x1 = self.transform1(x).unsqueeze(1).repeat(1, self.heads, 1)
-        x2 = self.sigmoid(self.transform2(x)).reshape(B, self.heads, self.output_dim)
+#     def forward(self, x):
+#         B, _ = x.size()
+#         x1 = self.transform1(x).unsqueeze(1).repeat(1, self.heads, 1)
+#         x2 = self.sigmoid(self.transform2(x)).reshape(B, self.heads, self.output_dim)
 
-        x = torch.mul(x1, x2)
-        x = self.bn(x.permute(0, 2, 1))
-        x = x.permute(0, 2, 1)
-        return x
+#         x = torch.mul(x1, x2)
+#         x = self.bn(x.permute(0, 2, 1))
+#         x = x.permute(0, 2, 1)
+#         return x
 
 
 class Fusion(nn.Module):
