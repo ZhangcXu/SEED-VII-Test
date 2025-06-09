@@ -34,7 +34,7 @@ class SEEDVIIDataset(Dataset):
         self.single_test = single_test
         self.is_test = is_test
         
-        # 情绪标签映射 (默认映射)
+        # 情绪标签映射
         self.label_mapping = label_mapping or {
             'Disgust': 0, 'Fear': 1, 'Sad': 2, 'Neutral': 3,
             'Happy': 4, 'Anger': 5, 'Surprise': 6
@@ -86,18 +86,18 @@ class SEEDVIIDataset(Dataset):
         
         for i in range(len(df)):
             row = df.iloc[i].values
-            # 检查是否是会话标题行
+            # 检查是否是标题行
             if "Session" in str(row[0]):
                 current_session = str(row[0]).split()[0] + " " + str(row[0]).split()[1]
                 continue
             
-            # 处理视频索引行
+            # 处理索引行
             if "Video index" in str(row[0]):
                 video_indices = [int(x) for x in row[1:21] if not pd.isna(x)]
                 next_row = df.iloc[i+1].values
                 emotions = [str(x).strip() for x in next_row[1:21] if not pd.isna(x)]
                 
-                # 将视频索引映射到情绪
+                # 将excel中标记的视频索引映射到情绪
                 for idx, emotion in zip(video_indices, emotions):
                     self.segment_to_emotion[idx] = emotion
     
@@ -128,7 +128,7 @@ class SEEDVIIDataset(Dataset):
             if label is None:
                 raise ValueError(f"Unknown emotion: {emotion}")
             
-            # 构建特征键名
+            # 寻找.mat中对应的键名
             key = f"{self.feature_type}_{seg_id}"
             if key not in mat_data:
                 raise KeyError(f"Feature {key} not found in {file_path}")
@@ -137,7 +137,7 @@ class SEEDVIIDataset(Dataset):
             if key_eye not in mat_data_eye:
                 raise KeyError(f"Feature {key_eye} not found in {file_path_eye}")
             
-            # 获取特征数组 (time_steps, 5, 62)
+            # 获取脑电数据大小为 (time_steps, 5, 62)
             feature_array = mat_data[key]
             # 眼动数据大小为 (time_steps, 33)
             feature_array_eye = mat_data_eye[key_eye]
@@ -172,7 +172,6 @@ class SEEDVIIDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, idx):
-        # 获取特征数组和时间步数量
         features = self.data[idx]
         label = self.labels[idx]
         domain_label = self.domain_labels[idx]
@@ -183,7 +182,7 @@ class SEEDVIIDataset(Dataset):
         else:
             eye_features = []
             
-        # 转换为PyTorch张量
+        # 转换为PyTorch张量；这里注意数据类型是float32
         features = torch.tensor(features, dtype=torch.float32)
         label = torch.tensor(label, dtype=torch.long)
         domain_label = torch.tensor(domain_label, dtype=torch.long)
